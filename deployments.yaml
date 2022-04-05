@@ -1,83 +1,3 @@
-
-# `Deployment` for the mongodb server
-
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mongodb-deployment
-  labels:
-    app: mongodb
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: mongodb
-  template:
-    metadata:
-      labels:
-        app: mongodb
-    spec:
-      containers:
-      - name: mongodb
-        image: mongo:latest
-        ports:
-          - containerPort: 27017
-        env:
-            - name: MONGO_INITDB_ROOT_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: secret
-                  key: mongo-root-username
-            - name: MONGO_INITDB_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: secret
-                  key: mongo-root-password 
-
----
-# `Deployment` for mongo-express
-
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mongo-express-deployment
-  labels:
-    app: mongo-express
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: mongo-express
-  template:
-    metadata:
-      labels:
-        app: mongo-express
-    spec:
-      containers:
-      - name: mongo-express
-        image: mongo-express:latest
-        ports:
-          - containerPort: 8081
-        env:
-          - name: ME_CONFIG_MONGODB_ADMINUSERNAME
-            valueFrom:
-              secretKeyRef:
-                name: secret
-                key: mongo-root-username
-          - name: ME_CONFIG_MONGODB_ADMINPASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: secret
-                key: mongo-root-password
-          - name: ME_CONFIG_MONGODB_SERVER
-            valueFrom:
-              configMapKeyRef:
-                name: configmap
-                key: database_url
----
-#`Deployment` for flask-app
-
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -96,23 +16,36 @@ spec:
     spec:
       containers:
       - name: webapp
-        image: blogapp:1.0
+        image: nanajanashia/k8s-demo-app:v1.0
         ports:
-        - containerPort: 5001
-        imagePullPolicy: Never
+        - containerPort: 3000
         env:
-        - name: user
+        - name: USER_NAME
           valueFrom:
             secretKeyRef:
-              name: secret
-              key: mongo-root-username
-        - name: password
+              name: mongo-secret
+              key: mongo-user
+        - name: USER_PWD
           valueFrom:
             secretKeyRef:
-              name: secret
-              key: mongo-root-password 
+              name: mongo-secret
+              key: mongo-password 
         - name: DB_URL
           valueFrom:
             configMapKeyRef:
-              name: configmap
-              key: database_url
+              name: mongo-config
+              key: mongo-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service
+spec:
+  type: NodePort
+  selector:
+    app: webapp
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+      nodePort: 30100
